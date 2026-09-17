@@ -1,0 +1,18 @@
+import { z } from "zod";
+
+export const AssetFareChainSchema = z.enum(["solana", "base", "arbitrum", "robinhood"]);
+export const AssetFareTokenSchema = z.enum(["SOL", "ETH", "USDC", "USDG"]);
+
+/** Input schema for a read-only AssetFare route quote. */
+export const AssetFareQuoteSchema = z
+  .object({
+    fromChain: AssetFareChainSchema.describe("Source blockchain"),
+    fromToken: AssetFareTokenSchema.describe("Source asset symbol"),
+    toChain: AssetFareChainSchema.describe("Destination blockchain"),
+    toToken: AssetFareTokenSchema.describe("Destination asset symbol"),
+    amountUsd: z.number().min(1).max(1000).describe("USD notional from 1 through 1000"),
+  })
+  .strict()
+  .refine(value => value.fromChain !== value.toChain || value.fromToken !== value.toToken, {
+    message: "Identity routes do not require a quote",
+  });

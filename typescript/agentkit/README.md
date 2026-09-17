@@ -178,6 +178,19 @@ const agent = createAgent({
 </table>
 </details>
 <details>
+<summary><strong>AssetFare</strong></summary>
+<table width="100%">
+<tr>
+    <td width="200"><code>get_capabilities</code></td>
+    <td width="768">Reads the current capped public multichain route scope and non-custodial safety boundary.</td>
+</tr>
+<tr>
+    <td width="200"><code>quote_route</code></td>
+    <td width="768">Requests a read-only, fee-inclusive route quote across Solana, Base, Arbitrum, or Robinhood Chain.</td>
+</tr>
+</table>
+</details>
+<details>
 <summary><strong>Base Account</strong></summary>
 <table width="100%">
 <tr>
