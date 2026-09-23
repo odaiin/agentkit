@@ -106,6 +106,11 @@ describe("AssetFareActionProvider", () => {
       expect(
         GetQuoteSchema.safeParse({ ...args, fromChain: "base", fromToken: "SOL" }).success,
       ).toBe(false);
+      expect(GetQuoteSchema.safeParse({ ...args, amountUsd: 1000.01 }).success).toBe(true);
+      expect(GetQuoteSchema.safeParse({ ...args, amountUsd: 1_000_000 }).success).toBe(true);
+      expect(
+        GetQuoteSchema.safeParse({ ...args, amountUsd: Number.POSITIVE_INFINITY }).success,
+      ).toBe(false);
       expect(
         GetQuoteSchema.safeParse({
           ...args,

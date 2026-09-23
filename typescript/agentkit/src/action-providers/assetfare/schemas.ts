@@ -45,9 +45,11 @@ export const GetQuoteSchema = z
     toToken: AssetFareTokenSchema.describe("Destination asset symbol, e.g. USDC"),
     amountUsd: z
       .number()
+      .finite()
       .min(1)
-      .max(1000)
-      .describe("USD notional to route, from 1 through 1000 inclusive"),
+      .describe(
+        "Finite USD notional to route, minimum 1 with no business maximum; live liquidity and capacity still apply",
+      ),
   })
   .strict()
   .superRefine((value, context) => {

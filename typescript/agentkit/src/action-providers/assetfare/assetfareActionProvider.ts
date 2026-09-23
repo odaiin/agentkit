@@ -106,7 +106,7 @@ Important notes:
 It takes the following inputs:
 - The source chain and asset symbol
 - The destination chain and asset symbol
-- The USD notional, from 1 through 1000
+- A finite USD notional of at least 1; AssetFare publishes no business maximum, while live liquidity and capacity still apply
 
 Important notes:
 - Judge the route by the quote's total token-path cost and expected or minimum receive, never by the 1bp service fee alone: Circle, provider, and network fees are additional

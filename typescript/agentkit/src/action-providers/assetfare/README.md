@@ -27,7 +27,7 @@ assetfare/
   - Fails closed if the service does not report `server_signing: false` and `server_submission: false`
 
 - `get_quote`: Request one fresh route quote
-  - Inputs: source chain and asset, destination chain and asset, USD notional from 1 through 1000
+  - Inputs: source chain and asset, destination chain and asset, finite USD notional of at least 1 with no business maximum (live liquidity/capacity still apply)
   - Returns expected and minimum receive, the full `cost_summary` (AssetFare service fee of 1bp plus
     separate Circle, provider, and network fee components), unpriced costs, ETA, TTL, and non-atomic risk
   - The 1bp service fee is not the total cost; judge the route by the total token-path cost
