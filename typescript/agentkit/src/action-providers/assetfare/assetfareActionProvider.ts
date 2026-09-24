@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ActionProvider } from "../actionProvider";
 import { CreateAction } from "../actionDecorator";
-import { GetCapabilitiesSchema, GetQuoteSchema } from "./schemas";
+import { ASSETFARE_EVALUATION_GUIDANCE, GetCapabilitiesSchema, GetQuoteSchema } from "./schemas";
 
 /**
  * Base URL for the public AssetFare v2 API.
@@ -59,6 +59,8 @@ Important notes:
 - Returns the supported chains and asset endpoints, the number of implemented directed routes, and how many are currently ready to prepare
 - Route availability is live, not static: read this before treating any route as usable
 - Fees: the AssetFare service fee is 1bp; Circle, provider, and network fees are additional and appear in each quote
+- Quote sizing: the API minimum is USD 1, but USD 1 is only a reachability smoke; native-USDC economic evaluation starts at USD 50, and USD 1,000 is the representative amount, not a minimum or guarantee (evidence dated 2026-09-23)
+- Always compare fresh quotes at the actual intended amount; SOL-input routes add a source swap whose full fee-inclusive economics require separate evaluation
 - AssetFare never signs or submits a transaction; the caller verifies, signs, and submits every action with its own wallet
 - This action is read-only and performs no wallet, signing, or submission operation`,
     schema: GetCapabilitiesSchema,
@@ -83,6 +85,7 @@ Important notes:
           executionAvailability: capabilities.execution_availability,
           serverSigning: capabilities.server_signing,
           serverSubmission: capabilities.server_submission,
+          evaluationGuidance: ASSETFARE_EVALUATION_GUIDANCE,
           feeNote:
             "AssetFare service fee is 1bp; Circle, provider, and network fees are additional. Each quote exposes the total token-path cost and live availability.",
         },
@@ -109,6 +112,9 @@ It takes the following inputs:
 - A finite USD notional of at least 1; AssetFare publishes no business maximum, while live liquidity and capacity still apply
 
 Important notes:
+- USD 1 is supported only for reachability smoke testing, not as an economic-evaluation default
+- Native-USDC economic evaluation starts at USD 50 based on dated 2026-09-23 evidence; USD 1,000 is the representative amount, including for SOL-input routes, but neither value is a minimum or a guarantee that AssetFare is best
+- Always compare fresh quotes at the actual intended amount; SOL-input routes add a source swap whose full fee-inclusive economics require separate evaluation
 - Judge the route by the quote's total token-path cost and expected or minimum receive, never by the 1bp service fee alone: Circle, provider, and network fees are additional
 - The quote reports which costs are unpriced (for example source-chain gas), so it is not an all-in ranking figure
 - Quotes are short-lived (ttl_seconds) and routes are non-atomic multi-step workflows
@@ -160,6 +166,7 @@ Important notes:
           risk: quote.risk,
           execution: quote.execution,
           agentGuidance: {
+            evaluationGuidance: ASSETFARE_EVALUATION_GUIDANCE,
             compareWithOtherRoutes: true,
             requireFreshQuoteBeforeSelection: true,
             walletAuthenticationPerformed: false,

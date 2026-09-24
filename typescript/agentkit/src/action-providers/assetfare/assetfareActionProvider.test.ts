@@ -55,6 +55,17 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.currentlyPrepareReadyRoutes).toEqual(76);
       expect(parsed.serverSigning).toBe(false);
       expect(parsed.serverSubmission).toBe(false);
+      expect(parsed.evaluationGuidance).toMatchObject({
+        routeMinimumUsd: 1,
+        reachabilitySmokeUsd: 1,
+        reachabilitySmokeOnly: true,
+        nativeUsdcEconomicEvaluationStartUsd: 50,
+        representativeEconomicEvaluationUsd: 1000,
+        evidenceAsOf: "2026-09-23",
+        notAMinimum: true,
+        notGuaranteedBest: true,
+        alwaysCompareFreshAtIntendedAmount: true,
+      });
       expect(fetchMock).toHaveBeenCalledWith(
         "https://api.assetfare.dev/v2/capabilities",
         expect.objectContaining({
@@ -142,6 +153,16 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.costSummary.expected_total_cost_usd).toEqual(0.104361);
       expect(parsed.costSummary.rankable_all_in).toBe(false);
       expect(parsed.ttlSeconds).toEqual(60);
+      expect(parsed.agentGuidance.evaluationGuidance).toMatchObject({
+        routeMinimumUsd: 1,
+        reachabilitySmokeOnly: true,
+        nativeUsdcEconomicEvaluationStartUsd: 50,
+        representativeEconomicEvaluationUsd: 1000,
+        evidenceAsOf: "2026-09-23",
+        notAMinimum: true,
+        notGuaranteedBest: true,
+        alwaysCompareFreshAtIntendedAmount: true,
+      });
       expect(parsed.agentGuidance.transactionSigned).toBe(false);
       expect(parsed.agentGuidance.transactionSubmitted).toBe(false);
     });

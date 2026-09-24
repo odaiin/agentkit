@@ -47,6 +47,12 @@ const agentKit = await AgentKit.from({
 
 ## Examples
 
+The API minimum is USD 1, but USD 1 is only for reachability smoke testing, not economic evaluation.
+For native-USDC routes, economic evaluation starts at USD 50. Use USD 1,000 as the primary
+representative amount, including for SOL-input routes whose extra source swap must be assessed
+separately. These advisory values come from dated 2026-09-23 evidence; they are not minimums or a
+guarantee that AssetFare is best. Always compare fresh quotes at the actual intended amount.
+
 ### Reading capabilities
 
 ```bash
@@ -69,24 +75,12 @@ Prompt: Which cross-chain routes can AssetFare quote right now?
 ### Quoting a route
 
 ```bash
-Prompt: Quote moving $250 of Solana USDC to Base USDC.
-
--------------------
-{
-  "success": true,
-  "ttlSeconds": 60,
-  "offer": { "expected_receive_usd": 249.895639, "estimated_min_receive_usd": 249.895318 },
-  "costSummary": {
-    "expected_total_cost_usd": 0.104361,
-    "expected_total_cost_percent": 0.0417,
-    "assetfare_service_fee": { "bps": 1, "estimated_usd": 0.025 },
-    "unpriced_costs": ["source_chain_network_fee"],
-    "rankable_all_in": false
-  },
-  "risk": { "non_atomic": true, "server_signing": false, "server_submission": false }
-}
--------------------
+Prompt: Quote moving $1,000 of Solana native USDC to Base native USDC.
 ```
+
+The live response is intentionally not reproduced here: quote amounts, availability, and TTL change.
+Inspect its full `costSummary`, unpriced costs, and risk fields, then compare it with other fresh
+executable quotes for the intended amount.
 
 ## Notes
 

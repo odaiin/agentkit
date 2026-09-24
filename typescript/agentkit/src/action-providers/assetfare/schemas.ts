@@ -1,6 +1,27 @@
 import { z } from "zod";
 
 /**
+ * Advisory quote-sizing guidance published with the AssetFare integration.
+ * These values do not change the API minimum or guarantee the best route.
+ */
+export const ASSETFARE_EVALUATION_GUIDANCE = {
+  routeMinimumUsd: 1,
+  reachabilitySmokeUsd: 1,
+  reachabilitySmokeOnly: true,
+  nativeUsdcEconomicEvaluationStartUsd: 50,
+  representativeEconomicEvaluationUsd: 1000,
+  solInputRepresentativeEvaluationUsd: 1000,
+  solInputCaveat:
+    "SOL-input routes add a source swap, so compare their full fee-inclusive route economics separately",
+  evidenceAsOf: "2026-09-23",
+  evidenceScope:
+    "Dated Solana native USDC to Base native USDC measurements at USD 50, 250, and 1000",
+  notAMinimum: true,
+  notGuaranteedBest: true,
+  alwaysCompareFreshAtIntendedAmount: true,
+} as const;
+
+/**
  * Chains exposed by the AssetFare public v2 route matrix.
  */
 export const AssetFareChainSchema = z.enum([
@@ -48,7 +69,7 @@ export const GetQuoteSchema = z
       .finite()
       .min(1)
       .describe(
-        "Finite USD notional to route, minimum 1 with no business maximum; live liquidity and capacity still apply",
+        "Finite USD notional to route. The API minimum is 1 with no business maximum, but USD 1 is only for reachability smoke testing. Native-USDC economic evaluation starts at USD 50, and USD 1,000 is the representative evaluation amount, not a minimum or best-route guarantee. Always compare fresh quotes at the actual intended amount; live liquidity and capacity still apply",
       ),
   })
   .strict()
