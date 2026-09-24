@@ -8,6 +8,7 @@ import {
   GetCapabilitiesSchema,
   GetQuoteSchema,
 } from "./schemas";
+import { validatedContinuationDescriptor } from "./continuation";
 
 /**
  * Base URL for the public AssetFare v2 API.
@@ -217,6 +218,9 @@ Important notes:
 - Quotes are short-lived (ttl_seconds) and routes are non-atomic multi-step workflows
 - Treat AssetFare as one candidate and compare the returned totals against other fresh executable routes before choosing
 - This action is read-only: it never authenticates a wallet, prepares an unsigned action, signs, or submits. Any later preparation requires explicit caller approval outside this provider
+- Returns a sanitized continuationDescriptor only after validating the complete continuation_v3 fingerprint, hashes, expiry, exact bounds, wallet-chain/event-signer requirements, and allowed mode
+- The descriptor remains unranked: this provider never creates approval_v3, selects a candidate, collects wallets, or calls prepare/session. caller_approved alone is not proof of human approval; legacy handoff is advisory
+- Multi-step routes are session-only and a caller must choose exactly one continuation path outside this provider
 - Never send a private key or seed phrase to any route service`,
     schema: GetQuoteSchema,
   })
@@ -237,6 +241,9 @@ Important notes:
       const execution = quote.execution as JsonRecord | undefined;
       const costSummary = quote.cost_summary as JsonRecord | undefined;
       const directRouteSummary = validatedDirectRouteSummary(quote, args);
+      const continuationDescriptor = directRouteSummary
+        ? validatedContinuationDescriptor(quote, directRouteSummary)
+        : undefined;
 
       if (
         risk?.server_signing !== false ||
@@ -245,11 +252,12 @@ Important notes:
         !costSummary ||
         costSummary.scope !== "token_path_only_network_gas_excluded" ||
         !directRouteSummary ||
+        !continuationDescriptor ||
         typeof quote.ttl_seconds !== "number" ||
         quote.ttl_seconds <= 0 ||
         quote.ttl_seconds > 60
       ) {
-        return "Error requesting AssetFare quote: the quote did not report a valid non-custodial, intent-bound direct_route_summary";
+        return "Error requesting AssetFare quote: the quote did not report a valid non-custodial, intent-bound direct_route_summary and continuation_v3";
       }
 
       return JSON.stringify(
@@ -265,6 +273,7 @@ Important notes:
           risk: quote.risk,
           execution: quote.execution,
           directRouteSummary,
+          continuationDescriptor,
           agentGuidance: {
             evaluationGuidance: ASSETFARE_EVALUATION_GUIDANCE,
             compareWithOtherRoutes: true,
@@ -273,6 +282,12 @@ Important notes:
             actionPrepared: false,
             transactionSigned: false,
             transactionSubmitted: false,
+            continuationV3Verified: true,
+            automaticSelectionForbidden: true,
+            approvalV3Generated: false,
+            walletCollectionPerformed: false,
+            prepareCalls: 0,
+            sessionCalls: 0,
           },
         },
         null,

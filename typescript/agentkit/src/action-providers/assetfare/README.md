@@ -12,6 +12,7 @@ unsigned actions. It never receives a private key and never signs or submits a t
 assetfare/
 ├── assetfareActionProvider.test.ts # Tests for the provider
 ├── assetfareActionProvider.ts      # Main provider with AssetFare API functionality
+├── continuation.ts                 # REST 2.4 continuation_v3 validator + sanitized projection
 ├── index.ts                        # Main exports
 ├── README.md                       # Documentation
 └── schemas.ts                      # AssetFare action schemas
@@ -39,6 +40,18 @@ assetfare/
   - Fails closed if the summary is missing, has extra or malformed fields, breaks path or amount
     continuity, misstates a provider/action/fee, or disagrees with the requested intent or the
     quote's route, risk, fee, or raw provider steps
+  - Validates the complete REST 2.4 `continuation_v3` fingerprint, payload/route hashes, expiry,
+    exact bounds, required wallet chains/event signer, and allowed mode, then returns only a
+    sanitized `continuationDescriptor` (quote ID/fingerprint, expiry, unranked status,
+    wallet/signer requirements, allowed/recommended mode, full OpenAPI URL, legacy advisory)
+  - Recomputes the portable payload hash after replacing duplicated raw base-unit numbers with
+    exact `direct_route_summary` strings, then using typed-canonical-v1 bytes that preserve JSON
+    types and negative zero, encode finite numbers as IEEE-754 binary64, and reject unsafe
+    non-substituted integral numbers and lone Unicode surrogates while supporting substituted raw
+    amounts above JavaScript's `2^53` safe limit
+  - Never creates `approval_v3`, selects a candidate, collects wallets, or calls prepare/session.
+    `caller_approved: true` alone is not proof of human approval. Multi-step routes are session-only
+    and a caller must choose exactly one continuation path outside this provider
   - The 1bp service fee is not the total cost; judge the route by the total token-path cost
   - Read-only: no wallet authentication, no unsigned action preparation, no signing, no submission
 
@@ -105,6 +118,11 @@ compare it with other fresh executable quotes for the intended amount. The summa
 `provider_internal_dex_aggregation_possible` is true because Across may source or aggregate
 liquidity internally. `route_aggregator_used: false` is limited to AssetFare's own route engine and
 must not be presented as a claim about a provider's internal routing.
+
+The returned `continuationDescriptor` is deliberately non-executable and remains
+`selection_status: unranked_candidate`. The safe sequence is: compare fresh candidates → make an
+explicit local selection → copy the exact v3 bounds and one allowed mode in a separate reviewed
+execution integration. This provider performs none of those execution steps.
 
 ## Notes
 
