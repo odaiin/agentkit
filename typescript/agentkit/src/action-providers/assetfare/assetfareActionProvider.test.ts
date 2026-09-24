@@ -1,5 +1,5 @@
 import { assetfareActionProvider } from "./assetfareActionProvider";
-import { GetQuoteSchema } from "./schemas";
+import { AssetFareDirectRouteSummarySchema, GetQuoteSchema } from "./schemas";
 
 describe("AssetFareActionProvider", () => {
   const fetchMock = jest.fn();
@@ -17,6 +17,56 @@ describe("AssetFareActionProvider", () => {
     execution_availability: { status: "available", guarantees_future_availability: false },
     server_signing: false,
     server_submission: false,
+    direct_route_summary: {
+      version: "assetfare-direct-route-summary-v1",
+      required_on_every_quote: true,
+      route_count: 76,
+      step_count: 168,
+      ordered_provider_path: true,
+      normalized_chain_asset_endpoints: true,
+      base_unit_amounts_are_decimal_strings: true,
+      assetfare_fee_step_bound: true,
+      classification_values: ["direct_protocol_only", "external_intent"],
+      route_aggregator_used_scope: "assetfare_engine_only",
+      external_intent:
+        "Across only for Robinhood ingress; provider-internal liquidity sourcing or aggregation remains possible",
+      server_signing: false,
+      server_submission: false,
+    },
+  };
+
+  const directRouteSummary = {
+    version: "assetfare-direct-route-summary-v1",
+    route: "solana:USDC->base:USDC",
+    from: "solana:USDC",
+    to: "base:USDC",
+    classification: "direct_protocol_only",
+    mode: "cctp_direct_composition",
+    route_aggregator_used: false,
+    external_intent_protocol_used: false,
+    provider_internal_dex_aggregation_possible: false,
+    assetfare_fee_bps: 1,
+    fee_collection_step_index: 0,
+    server_signing: false,
+    server_submission: false,
+    step_count: 1,
+    steps: [
+      {
+        index: 0,
+        action: "bridge",
+        provider: "circle_cctp",
+        from: "solana:USDC",
+        to: "base:USDC",
+        expected_input_base: "250000000",
+        minimum_input_base: "250000000",
+        expected_output_base: "249895639",
+        minimum_output_base: "249895318",
+        assetfare_fee_bps: 1,
+        direct_protocol: true,
+        external_intent_protocol: false,
+        aggregator_api_used: false,
+      },
+    ],
   };
 
   const quote = {
@@ -24,7 +74,12 @@ describe("AssetFareActionProvider", () => {
     as_of: "2026-01-01T00:00:00Z",
     ttl_seconds: 60,
     intent: { from: "solana:USDC", to: "base:USDC", amount_usd: 250 },
-    offer: { expected_receive_usd: 249.895639, estimated_min_receive_usd: 249.895318 },
+    offer: {
+      expected_receive_usd: 249.895639,
+      estimated_min_receive_usd: 249.895318,
+      assetfare_fee_bps: 1,
+      fee_collection_steps: [0],
+    },
     cost_summary: {
       scope: "token_path_only_network_gas_excluded",
       input_value_usd: 250,
@@ -35,7 +90,30 @@ describe("AssetFareActionProvider", () => {
       rankable_all_in: false,
     },
     eta: { estimated_time_range_seconds: [8, 20] },
-    risk: { non_atomic: true, server_signing: false, server_submission: false },
+    route: {
+      route: "solana:USDC->base:USDC",
+      mode: "cctp_direct_composition",
+      steps: [
+        {
+          index: 0,
+          kind: "direct_bridge",
+          provider: "circle_cctp",
+          route_fee_bps: 1,
+        },
+      ],
+      aggregator_api_used: false,
+      external_intent_protocol_used: false,
+      server_signing: false,
+      server_submission: false,
+    },
+    direct_route_summary: directRouteSummary,
+    risk: {
+      non_atomic: true,
+      external_intent_protocol_used: false,
+      provider_internal_dex_aggregation_possible: false,
+      server_signing: false,
+      server_submission: false,
+    },
     execution: { supported: true, current_prepare_readiness: "available" },
   };
 
@@ -55,6 +133,12 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.currentlyPrepareReadyRoutes).toEqual(76);
       expect(parsed.serverSigning).toBe(false);
       expect(parsed.serverSubmission).toBe(false);
+      expect(parsed.directRouteSummary).toMatchObject({
+        version: "assetfare-direct-route-summary-v1",
+        required_on_every_quote: true,
+        route_count: 76,
+        ordered_provider_path: true,
+      });
       expect(parsed.evaluationGuidance).toMatchObject({
         routeMinimumUsd: 1,
         reachabilitySmokeUsd: 1,
@@ -83,6 +167,17 @@ describe("AssetFareActionProvider", () => {
       const result = await provider.getCapabilities({});
 
       expect(result).toContain("no-sign, no-submit boundary");
+    });
+
+    it("should fail closed when the mandatory summary contract is missing or incomplete", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ ...capabilities, direct_route_summary: undefined }),
+      });
+
+      const result = await provider.getCapabilities({});
+
+      expect(result).toContain("mandatory direct_route_summary contract");
     });
 
     it("should handle API errors gracefully", async () => {
@@ -153,6 +248,13 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.costSummary.expected_total_cost_usd).toEqual(0.104361);
       expect(parsed.costSummary.rankable_all_in).toBe(false);
       expect(parsed.ttlSeconds).toEqual(60);
+      expect(parsed.directRouteSummary).toEqual(directRouteSummary);
+      expect(parsed.directRouteSummary.steps[0]).toMatchObject({
+        provider: "circle_cctp",
+        from: "solana:USDC",
+        to: "base:USDC",
+        assetfare_fee_bps: 1,
+      });
       expect(parsed.agentGuidance.evaluationGuidance).toMatchObject({
         routeMinimumUsd: 1,
         reachabilitySmokeOnly: true,
@@ -192,7 +294,99 @@ describe("AssetFareActionProvider", () => {
 
       const result = await provider.getQuote(args);
 
-      expect(result).toContain("no-sign, no-submit boundary");
+      expect(result).toContain("intent-bound direct_route_summary");
+    });
+
+    it("should fail closed when direct_route_summary is missing", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ ...quote, direct_route_summary: undefined }),
+      });
+
+      const result = await provider.getQuote(args);
+
+      expect(result).toContain("intent-bound direct_route_summary");
+    });
+
+    it("should fail closed when direct_route_summary is not bound to the requested intent", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          ...quote,
+          direct_route_summary: {
+            ...directRouteSummary,
+            from: "solana:SOL",
+            route: "solana:SOL->base:USDC",
+            steps: [
+              {
+                ...directRouteSummary.steps[0],
+                from: "solana:SOL",
+              },
+            ],
+          },
+        }),
+      });
+
+      const result = await provider.getQuote(args);
+
+      expect(result).toContain("intent-bound direct_route_summary");
+    });
+
+    it("should fail closed on summary extras, fee mismatches, and raw-provider mismatches", async () => {
+      const hostileQuotes = [
+        {
+          ...quote,
+          direct_route_summary: { ...directRouteSummary, private_key: "forbidden" },
+        },
+        {
+          ...quote,
+          direct_route_summary: { ...directRouteSummary, fee_collection_step_index: 1 },
+        },
+        {
+          ...quote,
+          route: {
+            ...quote.route,
+            steps: [{ ...quote.route.steps[0], provider: "across_intent_bridge" }],
+          },
+        },
+      ];
+
+      for (const hostileQuote of hostileQuotes) {
+        fetchMock.mockResolvedValueOnce({ ok: true, json: async () => hostileQuote });
+        const result = await provider.getQuote(args);
+        expect(result).toContain("intent-bound direct_route_summary");
+      }
+    });
+
+    it("should require the Across caveat exactly when an external-intent step is present", () => {
+      const externalSummary = {
+        ...directRouteSummary,
+        route: "base:USDC->robinhood:USDG",
+        from: "base:USDC",
+        to: "robinhood:USDG",
+        classification: "external_intent",
+        mode: "robinhood_across_ingress_composition",
+        external_intent_protocol_used: true,
+        provider_internal_dex_aggregation_possible: true,
+        steps: [
+          {
+            ...directRouteSummary.steps[0],
+            provider: "across_intent_bridge",
+            from: "base:USDC",
+            to: "robinhood:USDG",
+            direct_protocol: false,
+            external_intent_protocol: true,
+          },
+        ],
+      };
+
+      expect(AssetFareDirectRouteSummarySchema.safeParse(externalSummary).success).toBe(true);
+      expect(
+        AssetFareDirectRouteSummarySchema.safeParse({
+          ...externalSummary,
+          provider_internal_dex_aggregation_possible: false,
+        }).success,
+      ).toBe(false);
     });
 
     it("should surface API error messages", async () => {

@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { ActionProvider } from "../actionProvider";
 import { CreateAction } from "../actionDecorator";
-import { ASSETFARE_EVALUATION_GUIDANCE, GetCapabilitiesSchema, GetQuoteSchema } from "./schemas";
+import {
+  ASSETFARE_EVALUATION_GUIDANCE,
+  AssetFareDirectRouteSummaryCapabilitiesSchema,
+  AssetFareDirectRouteSummarySchema,
+  GetCapabilitiesSchema,
+  GetQuoteSchema,
+} from "./schemas";
 
 /**
  * Base URL for the public AssetFare v2 API.
@@ -14,6 +20,86 @@ export const ASSETFARE_BASE_URL = "https://api.assetfare.dev";
 const REQUEST_TIMEOUT_MS = 45_000;
 
 type JsonRecord = Record<string, unknown>;
+
+const isJsonRecord = (value: unknown): value is JsonRecord =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * Validates that a direct-route summary is bound to the requested intent and to the
+ * duplicate route, risk, fee, and raw-provider fields in the quote response.
+ *
+ * @param quote - Raw AssetFare quote response
+ * @param args - Caller-requested quote intent
+ * @returns The validated direct-route summary, or undefined on any mismatch
+ */
+const validatedDirectRouteSummary = (
+  quote: JsonRecord,
+  args: z.infer<typeof GetQuoteSchema>,
+): z.infer<typeof AssetFareDirectRouteSummarySchema> | undefined => {
+  const parsed = AssetFareDirectRouteSummarySchema.safeParse(quote.direct_route_summary);
+  if (!parsed.success) return undefined;
+
+  const summary = parsed.data;
+  const intent = quote.intent;
+  const route = quote.route;
+  const risk = quote.risk;
+  const offer = quote.offer;
+  const expectedFrom = `${args.fromChain}:${args.fromToken}`;
+  const expectedTo = `${args.toChain}:${args.toToken}`;
+  const expectedRoute = `${expectedFrom}->${expectedTo}`;
+
+  if (
+    !isJsonRecord(intent) ||
+    intent.from !== expectedFrom ||
+    intent.to !== expectedTo ||
+    intent.amount_usd !== args.amountUsd ||
+    summary.from !== expectedFrom ||
+    summary.to !== expectedTo ||
+    summary.route !== expectedRoute ||
+    !isJsonRecord(route) ||
+    route.route !== summary.route ||
+    route.mode !== summary.mode ||
+    route.aggregator_api_used !== summary.route_aggregator_used ||
+    route.external_intent_protocol_used !== summary.external_intent_protocol_used ||
+    route.server_signing !== false ||
+    route.server_submission !== false ||
+    !isJsonRecord(risk) ||
+    risk.external_intent_protocol_used !== summary.external_intent_protocol_used ||
+    risk.provider_internal_dex_aggregation_possible !==
+      summary.provider_internal_dex_aggregation_possible ||
+    risk.server_signing !== false ||
+    risk.server_submission !== false ||
+    !isJsonRecord(offer) ||
+    offer.assetfare_fee_bps !== summary.assetfare_fee_bps
+  ) {
+    return undefined;
+  }
+
+  const rawSteps = route.steps;
+  const feeCollectionSteps = offer.fee_collection_steps;
+  if (
+    !Array.isArray(rawSteps) ||
+    rawSteps.length !== summary.step_count ||
+    !Array.isArray(feeCollectionSteps) ||
+    feeCollectionSteps.length !== 1 ||
+    feeCollectionSteps[0] !== summary.fee_collection_step_index
+  ) {
+    return undefined;
+  }
+
+  const rawStepsMatch = rawSteps.every((rawStep, index) => {
+    if (!isJsonRecord(rawStep)) return false;
+    const summaryStep = summary.steps[index];
+    return (
+      rawStep.index === index &&
+      rawStep.provider === summaryStep.provider &&
+      rawStep.route_fee_bps === summaryStep.assetfare_fee_bps &&
+      rawStep.kind === (summaryStep.action === "swap" ? "direct_swap" : "direct_bridge")
+    );
+  });
+
+  return rawStepsMatch ? summary : undefined;
+};
 
 /**
  * Configuration options for the AssetFare action provider.
@@ -69,8 +155,15 @@ Important notes:
     try {
       const capabilities = await this.request("/v2/capabilities");
 
+      const directRouteSummaryContract = AssetFareDirectRouteSummaryCapabilitiesSchema.safeParse(
+        capabilities.direct_route_summary,
+      );
+
       if (capabilities.server_signing !== false || capabilities.server_submission !== false) {
         return "Error reading AssetFare capabilities: the service did not report a non-custodial no-sign, no-submit boundary";
+      }
+      if (!directRouteSummaryContract.success) {
+        return "Error reading AssetFare capabilities: the service did not report a valid mandatory direct_route_summary contract";
       }
 
       return JSON.stringify(
@@ -85,6 +178,7 @@ Important notes:
           executionAvailability: capabilities.execution_availability,
           serverSigning: capabilities.server_signing,
           serverSubmission: capabilities.server_submission,
+          directRouteSummary: directRouteSummaryContract.data,
           evaluationGuidance: ASSETFARE_EVALUATION_GUIDANCE,
           feeNote:
             "AssetFare service fee is 1bp; Circle, provider, and network fees are additional. Each quote exposes the total token-path cost and live availability.",
@@ -116,6 +210,9 @@ Important notes:
 - Native-USDC economic evaluation starts at USD 50 based on dated 2026-09-23 evidence; USD 1,000 is the representative amount, including for SOL-input routes, but neither value is a minimum or a guarantee that AssetFare is best
 - Always compare fresh quotes at the actual intended amount; SOL-input routes add a source swap whose full fee-inclusive economics require separate evaluation
 - Judge the route by the quote's total token-path cost and expected or minimum receive, never by the 1bp service fee alone: Circle, provider, and network fees are additional
+- Returns a strictly validated directRouteSummary: the intent-bound ordered provider/from/to path, exact decimal-string base-unit bounds, single AssetFare fee step, and direct_protocol_only versus external_intent classification
+- Reject the whole quote if that summary is missing, malformed, discontinuous, or inconsistent with the requested intent, route, risk, fee, or raw provider steps
+- route_aggregator_used=false describes AssetFare's route engine only; an Across external_intent step may use provider-internal liquidity sourcing or aggregation
 - The quote reports which costs are unpriced (for example source-chain gas), so it is not an all-in ranking figure
 - Quotes are short-lived (ttl_seconds) and routes are non-atomic multi-step workflows
 - Treat AssetFare as one candidate and compare the returned totals against other fresh executable routes before choosing
@@ -139,6 +236,7 @@ Important notes:
       const risk = quote.risk as JsonRecord | undefined;
       const execution = quote.execution as JsonRecord | undefined;
       const costSummary = quote.cost_summary as JsonRecord | undefined;
+      const directRouteSummary = validatedDirectRouteSummary(quote, args);
 
       if (
         risk?.server_signing !== false ||
@@ -146,11 +244,12 @@ Important notes:
         execution?.supported !== true ||
         !costSummary ||
         costSummary.scope !== "token_path_only_network_gas_excluded" ||
+        !directRouteSummary ||
         typeof quote.ttl_seconds !== "number" ||
         quote.ttl_seconds <= 0 ||
         quote.ttl_seconds > 60
       ) {
-        return "Error requesting AssetFare quote: the quote did not report a non-custodial no-sign, no-submit boundary";
+        return "Error requesting AssetFare quote: the quote did not report a valid non-custodial, intent-bound direct_route_summary";
       }
 
       return JSON.stringify(
@@ -165,6 +264,7 @@ Important notes:
           eta: quote.eta,
           risk: quote.risk,
           execution: quote.execution,
+          directRouteSummary,
           agentGuidance: {
             evaluationGuidance: ASSETFARE_EVALUATION_GUIDANCE,
             compareWithOtherRoutes: true,
