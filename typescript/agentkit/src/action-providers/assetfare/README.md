@@ -124,6 +124,19 @@ The returned `continuationDescriptor` is deliberately non-executable and remains
 explicit local selection → copy the exact v3 bounds and one allowed mode in a separate reviewed
 execution integration. This provider performs none of those execution steps.
 
+The response also includes `agentGuidance.callerOwnedContinuation`, a structured two-command
+handoff pinned to `assetfare-mcp@1.3.0`. Because this provider deliberately does not expose the raw
+quote, the first command obtains and writes one new exact validated quote to a mode-0600 file. Only
+after comparison and explicit caller approval, the second command creates strict quote-bound
+approval locally and requests one verified unsigned session action. The commands are returned as an
+executable plus argument array rather than a shell string. They contain public-address placeholders
+only; this provider still never collects a wallet, prepares an action, signs, or submits.
+
+For agent-wallet funding, use that path for an aggregate refill or material transfer. Do not invoke
+it automatically for each failed x402 micropayment. Native-USDC needs below the dated USD 50
+evaluation start should be aggregated before comparison, and a wallet with no spendable asset on
+any supported source chain is not an AssetFare use case.
+
 ## Notes
 
 - Quotes are short-lived; request a fresh one before acting.

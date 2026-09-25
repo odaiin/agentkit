@@ -512,6 +512,48 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.agentGuidance.walletCollectionPerformed).toBe(false);
       expect(parsed.agentGuidance.prepareCalls).toBe(0);
       expect(parsed.agentGuidance.sessionCalls).toBe(0);
+      expect(parsed.agentGuidance.callerOwnedContinuation).toMatchObject({
+        packageVersion: "1.3.0",
+        requiresFreshRequote: true,
+        requiresExplicitCallerApprovalBeforePlan: true,
+        providerReturnsRawQuote: false,
+        providerRemainsReadOnly: true,
+        outcome: "verified_unsigned_plan_only",
+        walletSignsAndSubmits: true,
+        assetFareServerSignsOrSubmits: false,
+      });
+      expect(parsed.agentGuidance.callerOwnedContinuation.quoteCommand.args).toEqual([
+        "--yes",
+        "--package=assetfare-mcp@1.3.0",
+        "assetfare-route-eval",
+        "--amount",
+        "250",
+        "--from-chain",
+        "solana",
+        "--from-token",
+        "USDC",
+        "--to-chain",
+        "base",
+        "--to-token",
+        "USDC",
+        "--quote-output",
+        "quote.json",
+      ]);
+      expect(
+        parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
+      ).toContain("--select-exact-quote-bounds");
+      expect(
+        parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
+      ).toContain("solana=<CALLER_SOLANA_PUBLIC_ADDRESS>");
+      expect(
+        parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
+      ).toContain("base=<CALLER_BASE_PUBLIC_ADDRESS>");
+      expect(
+        parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
+      ).toContain("<CALLER_EPHEMERAL_SOLANA_PUBLIC_KEY>");
+      expect(JSON.stringify(parsed.agentGuidance.callerOwnedContinuation)).not.toMatch(
+        /private_key|seed_phrase|signed_transaction|session_token/i,
+      );
       expect(parsed.continuationDescriptor).toMatchObject({
         version: "assetfare-quote-bound-continuation-v3",
         selection_status: "unranked_candidate",

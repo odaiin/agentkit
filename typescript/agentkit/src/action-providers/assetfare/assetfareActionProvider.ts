@@ -25,6 +25,63 @@ type JsonRecord = Record<string, unknown>;
 const isJsonRecord = (value: unknown): value is JsonRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+const callerOwnedContinuation = (
+  args: z.infer<typeof GetQuoteSchema>,
+  descriptor: { required_wallet_chains: string[]; event_signer_public_required: boolean },
+) => ({
+  packageVersion: "1.3.0",
+  requiresFreshRequote: true,
+  requiresExplicitCallerApprovalBeforePlan: true,
+  providerReturnsRawQuote: false,
+  providerRemainsReadOnly: true,
+  quoteCommand: {
+    executable: "npx",
+    args: [
+      "--yes",
+      "--package=assetfare-mcp@1.3.0",
+      "assetfare-route-eval",
+      "--amount",
+      String(args.amountUsd),
+      "--from-chain",
+      args.fromChain,
+      "--from-token",
+      args.fromToken,
+      "--to-chain",
+      args.toChain,
+      "--to-token",
+      args.toToken,
+      "--quote-output",
+      "quote.json",
+    ],
+  },
+  unsignedPlanCommandTemplate: {
+    executable: "npx",
+    args: [
+      "--yes",
+      "--package=assetfare-mcp@1.3.0",
+      "assetfare-plan",
+      "--caller-approved",
+      "--mode",
+      "session",
+      "--quote",
+      "quote.json",
+      "--select-exact-quote-bounds",
+      ...descriptor.required_wallet_chains.flatMap(chain => [
+        "--wallet",
+        `${chain}=<CALLER_${chain.toUpperCase()}_PUBLIC_ADDRESS>`,
+      ]),
+      ...(descriptor.event_signer_public_required
+        ? ["--event-signer-public", "<CALLER_EPHEMERAL_SOLANA_PUBLIC_KEY>"]
+        : []),
+      "--session-token-output",
+      "./session-capability.json",
+    ],
+  },
+  outcome: "verified_unsigned_plan_only",
+  walletSignsAndSubmits: true,
+  assetFareServerSignsOrSubmits: false,
+});
+
 /**
  * Validates that a direct-route summary is bound to the requested intent and to the
  * duplicate route, risk, fee, and raw-provider fields in the quote response.
@@ -288,6 +345,7 @@ Important notes:
             walletCollectionPerformed: false,
             prepareCalls: 0,
             sessionCalls: 0,
+            callerOwnedContinuation: callerOwnedContinuation(args, continuationDescriptor),
           },
         },
         null,
