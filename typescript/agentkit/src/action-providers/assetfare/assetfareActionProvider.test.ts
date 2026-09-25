@@ -517,7 +517,7 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.agentGuidance.prepareCalls).toBe(0);
       expect(parsed.agentGuidance.sessionCalls).toBe(0);
       expect(parsed.agentGuidance.callerOwnedContinuation).toMatchObject({
-        packageVersion: "1.6.0",
+        packageVersion: "1.6.1",
         requiresFreshRequote: true,
         requiresExplicitCallerApprovalBeforePlan: true,
         providerReturnsRawQuote: false,
@@ -528,7 +528,7 @@ describe("AssetFareActionProvider", () => {
       });
       expect(parsed.agentGuidance.callerOwnedContinuation.quoteCommand.args).toEqual([
         "--yes",
-        "--package=assetfare-mcp@1.6.0",
+        "--package=assetfare-mcp@1.6.1",
         "assetfare-route-eval",
         "--amount",
         "250",
