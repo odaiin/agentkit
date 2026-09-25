@@ -70,10 +70,11 @@ const agentKit = await AgentKit.from({
 ## Examples
 
 The API minimum is USD 1, but USD 1 is only for reachability smoke testing, not economic evaluation.
-For native-USDC routes, economic evaluation starts at USD 50. Use USD 1,000 as the primary
-representative amount, including for SOL-input routes whose extra source swap must be assessed
-separately. These advisory values come from dated 2026-09-23 evidence; they are not minimums or a
-guarantee that AssetFare is best. Always compare fresh quotes at the actual intended amount.
+USD 50 was an observed competitive bucket only for dated 2026-09-23 Solana USDC to Base USDC
+evidence; no threshold is claimed for another corridor. Use USD 1,000 as the primary representative
+amount, including for SOL-input routes whose extra source swap must be assessed separately. These
+advisory values are not minimums or a guarantee that AssetFare is best. Always compare fresh quotes
+at the actual intended amount.
 
 ### Reading capabilities
 
@@ -125,17 +126,19 @@ explicit local selection → copy the exact v3 bounds and one allowed mode in a 
 execution integration. This provider performs none of those execution steps.
 
 The response also includes `agentGuidance.callerOwnedContinuation`, a structured two-command
-handoff pinned to `assetfare-mcp@1.3.0`. Because this provider deliberately does not expose the raw
+handoff pinned to `assetfare-mcp@1.3.1`. Because this provider deliberately does not expose the raw
 quote, the first command obtains and writes one new exact validated quote to a mode-0600 file. Only
 after comparison and explicit caller approval, the second command creates strict quote-bound
-approval locally and requests one verified unsigned session action. The commands are returned as an
-executable plus argument array rather than a shell string. They contain public-address placeholders
-only; this provider still never collects a wallet, prepares an action, signs, or submits.
+approval locally and requests one verified unsigned session action plus a caller-wallet handoff file
+containing EIP-1193 templates or Solana Wallet Standard construction inputs. The commands are
+returned as an executable plus argument array rather than a shell string. They contain public-address
+placeholders only; this provider still never collects a wallet, prepares an action, signs, or submits.
 
 For agent-wallet funding, use that path for an aggregate refill or material transfer. Do not invoke
-it automatically for each failed x402 micropayment. Native-USDC needs below the dated USD 50
-evaluation start should be aggregated before comparison, and a wallet with no spendable asset on
-any supported source chain is not an AssetFare use case.
+it automatically for each failed x402 micropayment. For the evidenced Solana USDC to Base USDC
+corridor, needs below the dated USD 50 observed bucket should be aggregated before comparison;
+other corridors have no claimed threshold. A wallet with no spendable asset on any supported source
+chain is not an AssetFare use case.
 
 ## Notes
 

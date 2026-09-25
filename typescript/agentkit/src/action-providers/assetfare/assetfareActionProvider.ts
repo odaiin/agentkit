@@ -29,7 +29,7 @@ const callerOwnedContinuation = (
   args: z.infer<typeof GetQuoteSchema>,
   descriptor: { required_wallet_chains: string[]; event_signer_public_required: boolean },
 ) => ({
-  packageVersion: "1.3.0",
+  packageVersion: "1.3.1",
   requiresFreshRequote: true,
   requiresExplicitCallerApprovalBeforePlan: true,
   providerReturnsRawQuote: false,
@@ -38,7 +38,7 @@ const callerOwnedContinuation = (
     executable: "npx",
     args: [
       "--yes",
-      "--package=assetfare-mcp@1.3.0",
+      "--package=assetfare-mcp@1.3.1",
       "assetfare-route-eval",
       "--amount",
       String(args.amountUsd),
@@ -58,7 +58,7 @@ const callerOwnedContinuation = (
     executable: "npx",
     args: [
       "--yes",
-      "--package=assetfare-mcp@1.3.0",
+      "--package=assetfare-mcp@1.3.1",
       "assetfare-plan",
       "--caller-approved",
       "--mode",
@@ -75,6 +75,8 @@ const callerOwnedContinuation = (
         : []),
       "--session-token-output",
       "./session-capability.json",
+      "--wallet-handoff-output",
+      "./caller-wallet-handoff.json",
     ],
   },
   outcome: "verified_unsigned_plan_only",
@@ -203,7 +205,7 @@ Important notes:
 - Returns the supported chains and asset endpoints, the number of implemented directed routes, and how many are currently ready to prepare
 - Route availability is live, not static: read this before treating any route as usable
 - Fees: the AssetFare service fee is 1bp; Circle, provider, and network fees are additional and appear in each quote
-- Quote sizing: the API minimum is USD 1, but USD 1 is only a reachability smoke; native-USDC economic evaluation starts at USD 50, and USD 1,000 is the representative amount, not a minimum or guarantee (evidence dated 2026-09-23)
+- Quote sizing: the API minimum is USD 1, but USD 1 is only a reachability smoke. USD 50 was an observed competitive bucket only for dated 2026-09-23 Solana USDC to Base USDC evidence; no threshold is claimed for another corridor. USD 1,000 is the representative amount, not a minimum or guarantee
 - Always compare fresh quotes at the actual intended amount; SOL-input routes add a source swap whose full fee-inclusive economics require separate evaluation
 - AssetFare never signs or submits a transaction; the caller verifies, signs, and submits every action with its own wallet
 - This action is read-only and performs no wallet, signing, or submission operation`,
@@ -265,7 +267,7 @@ It takes the following inputs:
 
 Important notes:
 - USD 1 is supported only for reachability smoke testing, not as an economic-evaluation default
-- Native-USDC economic evaluation starts at USD 50 based on dated 2026-09-23 evidence; USD 1,000 is the representative amount, including for SOL-input routes, but neither value is a minimum or a guarantee that AssetFare is best
+- USD 50 was an observed competitive bucket only for dated 2026-09-23 Solana USDC to Base USDC evidence; no threshold is claimed for another corridor. USD 1,000 is the representative amount, including for SOL-input routes, but neither value is a minimum or a guarantee that AssetFare is best
 - Always compare fresh quotes at the actual intended amount; SOL-input routes add a source swap whose full fee-inclusive economics require separate evaluation
 - Judge the route by the quote's total token-path cost and expected or minimum receive, never by the 1bp service fee alone: Circle, provider, and network fees are additional
 - Returns a strictly validated directRouteSummary: the intent-bound ordered provider/from/to path, exact decimal-string base-unit bounds, single AssetFare fee step, and direct_protocol_only versus external_intent classification

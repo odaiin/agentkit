@@ -382,7 +382,9 @@ describe("AssetFareActionProvider", () => {
         routeMinimumUsd: 1,
         reachabilitySmokeUsd: 1,
         reachabilitySmokeOnly: true,
-        nativeUsdcEconomicEvaluationStartUsd: 50,
+        observedCompetitiveBucketUsd: 50,
+        observedEvidenceRoute: "solana:USDC->base:USDC",
+        thresholdClaimedForOtherCorridors: false,
         representativeEconomicEvaluationUsd: 1000,
         evidenceAsOf: "2026-09-23",
         notAMinimum: true,
@@ -497,7 +499,9 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.agentGuidance.evaluationGuidance).toMatchObject({
         routeMinimumUsd: 1,
         reachabilitySmokeOnly: true,
-        nativeUsdcEconomicEvaluationStartUsd: 50,
+        observedCompetitiveBucketUsd: 50,
+        observedEvidenceRoute: "solana:USDC->base:USDC",
+        thresholdClaimedForOtherCorridors: false,
         representativeEconomicEvaluationUsd: 1000,
         evidenceAsOf: "2026-09-23",
         notAMinimum: true,
@@ -513,7 +517,7 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.agentGuidance.prepareCalls).toBe(0);
       expect(parsed.agentGuidance.sessionCalls).toBe(0);
       expect(parsed.agentGuidance.callerOwnedContinuation).toMatchObject({
-        packageVersion: "1.3.0",
+        packageVersion: "1.3.1",
         requiresFreshRequote: true,
         requiresExplicitCallerApprovalBeforePlan: true,
         providerReturnsRawQuote: false,
@@ -524,7 +528,7 @@ describe("AssetFareActionProvider", () => {
       });
       expect(parsed.agentGuidance.callerOwnedContinuation.quoteCommand.args).toEqual([
         "--yes",
-        "--package=assetfare-mcp@1.3.0",
+        "--package=assetfare-mcp@1.3.1",
         "assetfare-route-eval",
         "--amount",
         "250",
@@ -551,6 +555,12 @@ describe("AssetFareActionProvider", () => {
       expect(
         parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
       ).toContain("<CALLER_EPHEMERAL_SOLANA_PUBLIC_KEY>");
+      expect(
+        parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
+      ).toContain("--wallet-handoff-output");
+      expect(
+        parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
+      ).toContain("./caller-wallet-handoff.json");
       expect(JSON.stringify(parsed.agentGuidance.callerOwnedContinuation)).not.toMatch(
         /private_key|seed_phrase|signed_transaction|session_token/i,
       );

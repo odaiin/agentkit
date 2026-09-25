@@ -8,7 +8,9 @@ export const ASSETFARE_EVALUATION_GUIDANCE = {
   routeMinimumUsd: 1,
   reachabilitySmokeUsd: 1,
   reachabilitySmokeOnly: true,
-  nativeUsdcEconomicEvaluationStartUsd: 50,
+  observedCompetitiveBucketUsd: 50,
+  observedEvidenceRoute: "solana:USDC->base:USDC",
+  thresholdClaimedForOtherCorridors: false,
   representativeEconomicEvaluationUsd: 1000,
   solInputRepresentativeEvaluationUsd: 1000,
   solInputCaveat:
@@ -317,7 +319,7 @@ export const GetQuoteSchema = z
       .finite()
       .min(1)
       .describe(
-        "Finite USD notional to route. The API minimum is 1 with no business maximum, but USD 1 is only for reachability smoke testing. Native-USDC economic evaluation starts at USD 50, and USD 1,000 is the representative evaluation amount, not a minimum or best-route guarantee. Always compare fresh quotes at the actual intended amount; live liquidity and capacity still apply",
+        "Finite USD notional to route. The API minimum is 1 with no business maximum, but USD 1 is only for reachability smoke testing. USD 50 was an observed competitive bucket only for dated Solana USDC to Base USDC evidence; no threshold is claimed for another corridor. USD 1,000 is the representative evaluation amount, not a minimum or best-route guarantee. Always compare fresh quotes at the actual intended amount; live liquidity and capacity still apply",
       ),
   })
   .strict()
