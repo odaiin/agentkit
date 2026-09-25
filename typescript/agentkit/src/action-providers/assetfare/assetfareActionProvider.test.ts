@@ -517,7 +517,7 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.agentGuidance.prepareCalls).toBe(0);
       expect(parsed.agentGuidance.sessionCalls).toBe(0);
       expect(parsed.agentGuidance.callerOwnedContinuation).toMatchObject({
-        packageVersion: "1.3.6",
+        packageVersion: "1.4.0",
         requiresFreshRequote: true,
         requiresExplicitCallerApprovalBeforePlan: true,
         providerReturnsRawQuote: false,
@@ -528,7 +528,7 @@ describe("AssetFareActionProvider", () => {
       });
       expect(parsed.agentGuidance.callerOwnedContinuation.quoteCommand.args).toEqual([
         "--yes",
-        "--package=assetfare-mcp@1.3.6",
+        "--package=assetfare-mcp@1.4.0",
         "assetfare-route-eval",
         "--amount",
         "250",
@@ -546,6 +546,15 @@ describe("AssetFareActionProvider", () => {
       expect(
         parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
       ).toContain("--select-exact-quote-bounds");
+      expect(parsed.agentGuidance.callerOwnedContinuation.actionLifetime).toEqual({
+        quoteTtlSeconds: 60,
+        actionBundleTtlSeconds: 180,
+        evmOnchainDeadlineSeconds: 240,
+        walletReadyMinimumRemainingSeconds: 120,
+      });
+      expect(
+        parsed.agentGuidance.callerOwnedContinuation.walletReadyCommandTemplate.args,
+      ).toContain("wallet-ready");
       expect(
         parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
       ).toContain("solana=<CALLER_SOLANA_PUBLIC_ADDRESS>");
