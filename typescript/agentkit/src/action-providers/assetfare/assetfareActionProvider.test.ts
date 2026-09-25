@@ -517,7 +517,7 @@ describe("AssetFareActionProvider", () => {
       expect(parsed.agentGuidance.prepareCalls).toBe(0);
       expect(parsed.agentGuidance.sessionCalls).toBe(0);
       expect(parsed.agentGuidance.callerOwnedContinuation).toMatchObject({
-        packageVersion: "1.4.0",
+        packageVersion: "1.5.1",
         requiresFreshRequote: true,
         requiresExplicitCallerApprovalBeforePlan: true,
         providerReturnsRawQuote: false,
@@ -528,7 +528,7 @@ describe("AssetFareActionProvider", () => {
       });
       expect(parsed.agentGuidance.callerOwnedContinuation.quoteCommand.args).toEqual([
         "--yes",
-        "--package=assetfare-mcp@1.4.0",
+        "--package=assetfare-mcp@1.5.1",
         "assetfare-route-eval",
         "--amount",
         "250",
@@ -555,6 +555,16 @@ describe("AssetFareActionProvider", () => {
       expect(
         parsed.agentGuidance.callerOwnedContinuation.walletReadyCommandTemplate.args,
       ).toContain("wallet-ready");
+      expect(
+        parsed.agentGuidance.callerOwnedContinuation.callerOwnedRunnerCommandTemplate.args,
+      ).toContain("assetfare-agent-runner");
+      expect(parsed.agentGuidance.callerOwnedContinuation.callerOwnedRunner).toEqual({
+        policySchema: "https://assetfare.dev/schemas/caller-owned-execution-policy-v1.json",
+        keyLocation: "caller_wallet_adapter_only",
+        remoteMcpExecutionTool: false,
+        assetFareServerKeyAccess: false,
+        assetFareServerSignsOrSubmits: false,
+      });
       expect(
         parsed.agentGuidance.callerOwnedContinuation.unsignedPlanCommandTemplate.args,
       ).toContain("solana=<CALLER_SOLANA_PUBLIC_ADDRESS>");

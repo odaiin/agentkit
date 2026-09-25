@@ -126,7 +126,7 @@ explicit local selection → copy the exact v3 bounds and one allowed mode in a 
 execution integration. This provider performs none of those execution steps.
 
 The response also includes `agentGuidance.callerOwnedContinuation`, a structured two-command
-handoff pinned to `assetfare-mcp@1.4.0`. Because this provider deliberately does not expose the raw
+handoff pinned to `assetfare-mcp@1.5.1`. Because this provider deliberately does not expose the raw
 quote, the first command obtains and writes one new exact validated quote to a mode-0600 file. Only
 after comparison and explicit caller approval, the second command creates strict quote-bound
 approval locally and requests one verified unsigned session action plus a caller-wallet handoff file
@@ -134,11 +134,17 @@ containing EIP-1193 templates or Solana Wallet Standard construction inputs toge
 verified bundle, safety receipt, verification results, and a canonical handoff hash. The commands are
 returned as an executable plus argument array rather than a shell string. They contain public-address
 placeholders only; this provider still never collects a wallet, prepares an action, signs, or submits.
-The 1.4.0 session capability preserves the strict verification context so every later session action
+The 1.5.1 session capability preserves the strict verification context so every later session action
 receives the same semantic verification and a new self-verifying wallet handoff.
 Immediately before wallet use, run the returned `walletReadyCommandTemplate`. Quote selection stays
 at 60 seconds, but a selected action bundle lasts 180 seconds with a 240-second EVM deadline;
 `wallet-ready` requires at least 120 seconds remaining or refreshes only an expired, unsubmitted step.
+
+A caller-owned wallet agent can use the returned `callerOwnedRunnerCommandTemplate` after it has
+created a separate local policy and local wallet adapter. This read-only provider neither creates
+that policy nor receives a key. The runner is caller-process-only, has no remote MCP execution tool,
+and reports `keyLocation: caller_wallet_adapter_only` with AssetFare server key access/signing/
+submission all false.
 
 For agent-wallet funding, use that path for an aggregate refill or material transfer. Do not invoke
 it automatically for each failed x402 micropayment. For the evidenced Solana USDC to Base USDC
