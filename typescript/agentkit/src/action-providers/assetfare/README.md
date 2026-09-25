@@ -126,7 +126,7 @@ explicit local selection → copy the exact v3 bounds and one allowed mode in a 
 execution integration. This provider performs none of those execution steps.
 
 The response also includes `agentGuidance.callerOwnedContinuation`, a structured two-command
-handoff pinned to `assetfare-mcp@1.3.4`. Because this provider deliberately does not expose the raw
+handoff pinned to `assetfare-mcp@1.3.5`. Because this provider deliberately does not expose the raw
 quote, the first command obtains and writes one new exact validated quote to a mode-0600 file. Only
 after comparison and explicit caller approval, the second command creates strict quote-bound
 approval locally and requests one verified unsigned session action plus a caller-wallet handoff file
@@ -134,7 +134,7 @@ containing EIP-1193 templates or Solana Wallet Standard construction inputs toge
 verified bundle, safety receipt, verification results, and a canonical handoff hash. The commands are
 returned as an executable plus argument array rather than a shell string. They contain public-address
 placeholders only; this provider still never collects a wallet, prepares an action, signs, or submits.
-The 1.3.4 session capability preserves the strict verification context so every later session action
+The 1.3.5 session capability preserves the strict verification context so every later session action
 receives the same semantic verification and a new self-verifying wallet handoff.
 
 For agent-wallet funding, use that path for an aggregate refill or material transfer. Do not invoke

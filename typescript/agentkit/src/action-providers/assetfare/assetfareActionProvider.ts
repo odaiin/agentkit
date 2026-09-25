@@ -29,7 +29,7 @@ const callerOwnedContinuation = (
   args: z.infer<typeof GetQuoteSchema>,
   descriptor: { required_wallet_chains: string[]; event_signer_public_required: boolean },
 ) => ({
-  packageVersion: "1.3.4",
+  packageVersion: "1.3.5",
   requiresFreshRequote: true,
   requiresExplicitCallerApprovalBeforePlan: true,
   providerReturnsRawQuote: false,
@@ -38,7 +38,7 @@ const callerOwnedContinuation = (
     executable: "npx",
     args: [
       "--yes",
-      "--package=assetfare-mcp@1.3.4",
+      "--package=assetfare-mcp@1.3.5",
       "assetfare-route-eval",
       "--amount",
       String(args.amountUsd),
@@ -58,7 +58,7 @@ const callerOwnedContinuation = (
     executable: "npx",
     args: [
       "--yes",
-      "--package=assetfare-mcp@1.3.4",
+      "--package=assetfare-mcp@1.3.5",
       "assetfare-plan",
       "--caller-approved",
       "--mode",
