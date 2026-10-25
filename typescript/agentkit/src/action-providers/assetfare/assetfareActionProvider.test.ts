@@ -143,8 +143,8 @@ describe("AssetFareActionProvider", () => {
       { chain: "ethereum", token: "USDC" },
       { chain: "hyperevm", token: "USDC" },
     ],
-    execution_implemented_routes: 80,
-    currently_prepare_ready_routes: 80,
+    execution_implemented_routes: 65,
+    currently_prepare_ready_routes: 65,
     temporarily_unavailable_routes: [],
     execution_availability: { status: "available", guarantees_future_availability: false },
     server_signing: false,
@@ -152,8 +152,12 @@ describe("AssetFareActionProvider", () => {
     direct_route_summary: {
       version: "assetfare-direct-route-summary-v1",
       required_on_every_quote: true,
-      route_count: 80,
-      step_count: 188,
+      route_count: 65,
+      step_count: 118,
+      primary_direct_route_count: 65,
+      external_coverage_only_route_count: 0,
+      product_classification_values: ["primary_direct", "external_coverage_only"],
+      economic_eligibility_is_route_and_amount_conditioned: true,
       ordered_provider_path: true,
       normalized_chain_asset_endpoints: true,
       base_unit_amounts_are_decimal_strings: true,
@@ -174,6 +178,11 @@ describe("AssetFareActionProvider", () => {
     to: "base:USDC",
     classification: "direct_protocol_only",
     mode: "cctp_direct_composition",
+    product_classification: "primary_direct",
+    economic_eligibility: "not_asserted_by_capability",
+    public_execution_eligible: true,
+    primary_selection_eligible: true,
+    route_minimum_guard_bps: null,
     route_aggregator_used: false,
     external_intent_protocol_used: false,
     provider_internal_dex_aggregation_possible: false,
@@ -260,13 +269,13 @@ describe("AssetFareActionProvider", () => {
     },
     execution: { supported: true, current_prepare_readiness: "available" },
     economic_guidance: {
-      advisory_start_usd: 250,
-      advisory_role: "observed_economic_zone_start",
-      status: "observed_competitive_or_near_parity",
-      confidence: "measured_route_specific",
-      basis: "dated route-specific measurements",
-      tested_amounts_usd: [50, 250, 1000],
-      not_an_execution_minimum: true,
+      public_status: "offered",
+      public_active: true,
+      business_class: "conditional_business",
+      decision_unit: "whole_route",
+      amount_specific_product_gate: false,
+      quoted_amount_usd: 250,
+      price_recommended_for_amount: null,
       not_a_best_price_guarantee: true,
       fresh_quote_required: true,
     },
@@ -393,24 +402,24 @@ describe("AssetFareActionProvider", () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.implementedRoutes).toEqual(80);
-      expect(parsed.currentlyPrepareReadyRoutes).toEqual(80);
+      expect(parsed.implementedRoutes).toEqual(65);
+      expect(parsed.currentlyPrepareReadyRoutes).toEqual(65);
       expect(parsed.serverSigning).toBe(false);
       expect(parsed.serverSubmission).toBe(false);
       expect(parsed.directRouteSummary).toMatchObject({
         version: "assetfare-direct-route-summary-v1",
         required_on_every_quote: true,
-        route_count: 80,
+        route_count: 65,
         ordered_provider_path: true,
       });
       expect(parsed.evaluationGuidance).toMatchObject({
-        schemaVersion: 3,
+        schemaVersion: 5,
         routeMinimumUsd: 1,
         reachabilitySmokeUsd: 1,
         reachabilitySmokeOnly: true,
-        bestFromField: "economic_guidance.advisory_start_usd",
-        useAssetFareFirstAtOrAboveBestFrom: true,
-        bestFromNot100PercentGuarantee: true,
+        productStatusField: "economic_guidance.public_status",
+        decisionUnit: "whole_route",
+        amountSpecificProductGates: false,
         confirmFreshAssetFareQuote: true,
         executionSelectionSeparate: true,
         automaticSelectionForbidden: true,
@@ -530,20 +539,20 @@ describe("AssetFareActionProvider", () => {
         assetfare_fee_bps: 1,
       });
       expect(parsed.agentGuidance.evaluationGuidance).toMatchObject({
-        schemaVersion: 3,
+        schemaVersion: 5,
         routeMinimumUsd: 1,
         reachabilitySmokeOnly: true,
-        bestFromField: "economic_guidance.advisory_start_usd",
-        useAssetFareFirstAtOrAboveBestFrom: true,
-        bestFromNot100PercentGuarantee: true,
+        productStatusField: "economic_guidance.public_status",
+        decisionUnit: "whole_route",
+        amountSpecificProductGates: false,
         confirmFreshAssetFareQuote: true,
         executionSelectionSeparate: true,
         automaticSelectionForbidden: true,
       });
-      expect(parsed.economicGuidance.advisory_start_usd).toBe(250);
-      expect(parsed.agentGuidance.bestFromUsd).toBe(250);
-      expect(parsed.agentGuidance.useAssetFareFirstAtOrAboveBestFrom).toBe(true);
-      expect(parsed.agentGuidance.bestFromNot100PercentGuarantee).toBe(true);
+      expect(parsed.economicGuidance.public_status).toBe("offered");
+      expect(parsed.agentGuidance.publicStatus).toBe("offered");
+      expect(parsed.agentGuidance.publicActive).toBe(true);
+      expect(parsed.agentGuidance.notABestPriceGuarantee).toBe(true);
       expect(parsed.agentGuidance.confirmFreshAssetFareQuote).toBe(true);
       expect(parsed.agentGuidance.compareWithOtherRoutes).toBe(false);
       expect(parsed.agentGuidance.selectionStatus).toBe("unranked_candidate");

@@ -1,15 +1,16 @@
 import { z } from "zod";
 
-/** Agent-facing best-from policy. Execution selection remains separate. */
+/** Agent-facing whole-route product policy. Execution selection remains separate. */
 export const ASSETFARE_EVALUATION_GUIDANCE = {
-  schemaVersion: 3,
+  schemaVersion: 5,
   routeMinimumUsd: 1,
   reachabilitySmokeUsd: 1,
   reachabilitySmokeOnly: true,
-  bestFromField: "economic_guidance.advisory_start_usd",
-  bestFromCatalogUrl: "https://assetfare.dev/route-economics.json",
-  useAssetFareFirstAtOrAboveBestFrom: true,
-  bestFromNot100PercentGuarantee: true,
+  productStatusField: "economic_guidance.public_status",
+  routeCatalogUrl: "https://assetfare.dev/route-economics.json",
+  decisionUnit: "whole_route",
+  amountSpecificProductGates: false,
+  competitorRankingsPublicProduct: false,
   confirmFreshAssetFareQuote: true,
   executionSelectionSeparate: true,
   automaticSelectionForbidden: true,
@@ -27,6 +28,17 @@ export const AssetFareChainSchema = z.enum([
   "optimism",
   "ethereum",
   "hyperevm",
+  "xlayer",
+  "sei",
+  "sonic",
+  "monad",
+  "avalanche",
+  "cronos",
+  "injective",
+  "linea",
+  "aptos",
+  "unichain",
+  "ink",
 ]);
 
 /**
@@ -43,6 +55,17 @@ const tokensByChain: Record<z.infer<typeof AssetFareChainSchema>, readonly strin
   optimism: ["USDC"],
   ethereum: ["USDC"],
   hyperevm: ["USDC"],
+  xlayer: ["USDC"],
+  sei: ["USDC"],
+  sonic: ["USDC"],
+  monad: ["USDC"],
+  avalanche: ["USDC"],
+  cronos: ["USDC"],
+  injective: ["USDC"],
+  linea: ["USDC"],
+  aptos: ["USDC"],
+  unichain: ["USDC"],
+  ink: ["USDC"],
 };
 
 /**
@@ -62,43 +85,29 @@ export const AssetFareEndpointSchema = z.enum([
   "optimism:USDC",
   "ethereum:USDC",
   "hyperevm:USDC",
+  "xlayer:USDC",
+  "sei:USDC",
+  "sonic:USDC",
+  "monad:USDC",
+  "avalanche:USDC",
+  "cronos:USDC",
+  "injective:USDC",
+  "linea:USDC",
+  "aptos:USDC",
+  "unichain:USDC",
+  "ink:USDC",
 ]);
 
-/** Strict route-level best-from guidance required on every quote. */
+/** Strict whole-route product guidance required on every quote. */
 export const AssetFareRouteEconomicGuidanceSchema = z
   .object({
-    advisory_start_usd: z.union([
-      z.literal(50),
-      z.literal(100),
-      z.literal(250),
-      z.literal(500),
-      z.literal(1000),
-      z.literal(2500),
-      z.literal(5000),
-      z.literal(10000),
-    ]),
-    advisory_role: z.enum([
-      "observed_economic_zone_start",
-      "structural_evaluation_start_not_observed_eligibility",
-      "retest_start_not_economic_eligibility",
-    ]),
-    status: z.enum([
-      "observed_near_parity",
-      "observed_competitive_or_near_parity",
-      "provisional_evaluation_start",
-      "reworked_route_remeasure",
-      "coverage_only_retest",
-    ]),
-    confidence: z.enum([
-      "measured_two_day",
-      "measured_route_specific",
-      "structural_estimate",
-      "reworked_route_remeasure",
-      "coverage_only_retest",
-    ]),
-    basis: z.string().min(1),
-    tested_amounts_usd: z.array(z.number().int().positive()).max(8),
-    not_an_execution_minimum: z.literal(true),
+    public_status: z.literal("offered"),
+    public_active: z.literal(true),
+    business_class: z.enum(["core_business", "conditional_business", "strategic_scarce"]),
+    decision_unit: z.literal("whole_route"),
+    amount_specific_product_gate: z.literal(false),
+    quoted_amount_usd: z.number().finite().min(1),
+    price_recommended_for_amount: z.null(),
     not_a_best_price_guarantee: z.literal(true),
     fresh_quote_required: z.literal(true),
   })
@@ -117,7 +126,9 @@ const AssetFareDestinationEndpointSchema = z.enum([
 ]);
 
 const AssetFareDirectRouteModeSchema = z.enum([
+  "aptos_move_cctp_direct",
   "cctp_direct_composition",
+  "cctp_multileg_fast_composition",
   "optimism_source_cctp",
   "polygon_source_cctp",
   "robinhood_across_ingress_composition",
@@ -149,7 +160,7 @@ const directSwapProviders = new Set<string>(["orca_whirlpool", "raydium_clmm", "
 export const AssetFareDirectRouteStepSchema = z
   .object({
     index: z.number().int().nonnegative(),
-    action: z.enum(["swap", "bridge"]),
+    action: z.enum(["swap", "bridge", "receive"]),
     provider: AssetFareDirectRouteProviderSchema,
     from: AssetFareEndpointSchema,
     to: AssetFareDestinationEndpointSchema,
@@ -165,7 +176,11 @@ export const AssetFareDirectRouteStepSchema = z
   .strict()
   .superRefine((value, context) => {
     const externalIntent = value.provider === "across_intent_bridge";
-    const expectedAction = directSwapProviders.has(value.provider) ? "swap" : "bridge";
+    const expectedAction = directSwapProviders.has(value.provider)
+      ? "swap"
+      : value.provider === "circle_cctp_receive"
+        ? "receive"
+        : "bridge";
 
     if (value.action !== expectedAction) {
       context.addIssue({
@@ -215,6 +230,11 @@ export const AssetFareDirectRouteSummarySchema = z
     to: AssetFareDestinationEndpointSchema,
     classification: z.enum(["direct_protocol_only", "external_intent"]),
     mode: AssetFareDirectRouteModeSchema,
+    product_classification: z.enum(["primary_direct", "external_coverage_only"]),
+    economic_eligibility: z.enum(["not_asserted_by_capability", "coverage_only_not_primary"]),
+    public_execution_eligible: z.boolean(),
+    primary_selection_eligible: z.boolean(),
+    route_minimum_guard_bps: z.number().int().min(1).max(500).nullable(),
     route_aggregator_used: z.literal(false),
     external_intent_protocol_used: z.boolean(),
     provider_internal_dex_aggregation_possible: z.boolean(),
@@ -230,8 +250,6 @@ export const AssetFareDirectRouteSummarySchema = z
     const issue = (path: (string | number)[], message: string) =>
       context.addIssue({ code: z.ZodIssueCode.custom, path, message });
     const expectedRoute = `${value.from}->${value.to}`;
-    const fromChain = value.from.split(":", 1)[0];
-    const toChain = value.to.split(":", 1)[0];
     const acrossSteps = value.steps.filter(step => step.provider === "across_intent_bridge");
     const feeSteps = value.steps.filter(step => step.assetfare_fee_bps === 1);
 
@@ -292,23 +310,10 @@ export const AssetFareDirectRouteSummarySchema = z
         "provider-internal aggregation caveat must be true exactly for an Across intent path",
       );
 
-    const expectedMode =
-      fromChain === "polygon"
-        ? "polygon_source_cctp"
-        : fromChain === "optimism"
-          ? "optimism_source_cctp"
-          : fromChain === toChain
-            ? value.steps.length === 1
-              ? "same_chain_direct"
-              : "same_chain_direct_composition"
-            : toChain === "robinhood"
-              ? value.steps.some(step => step.provider === "paxos_usdg_layerzero_oft")
-                ? "robinhood_paxos_ingress_composition"
-                : "robinhood_across_ingress_composition"
-              : fromChain === "robinhood"
-                ? "robinhood_paxos_egress_composition"
-                : "cctp_direct_composition";
-    if (value.mode !== expectedMode) issue(["mode"], "mode must match the normalized route");
+    // The capability contract owns the finite mode vocabulary. Do not re-derive
+    // the planner's chosen composition here: newer direct CCTP corridors can
+    // legitimately use a specialized mode while preserving every path,
+    // amount, fee, and custody invariant validated above.
   });
 
 /**
@@ -320,6 +325,13 @@ export const AssetFareDirectRouteSummaryCapabilitiesSchema = z
     required_on_every_quote: z.literal(true),
     route_count: z.number().int().positive(),
     step_count: z.number().int().positive(),
+    primary_direct_route_count: z.number().int().nonnegative(),
+    external_coverage_only_route_count: z.number().int().nonnegative(),
+    product_classification_values: z.tuple([
+      z.literal("primary_direct"),
+      z.literal("external_coverage_only"),
+    ]),
+    economic_eligibility_is_route_and_amount_conditioned: z.boolean(),
     ordered_provider_path: z.literal(true),
     normalized_chain_asset_endpoints: z.literal(true),
     base_unit_amounts_are_decimal_strings: z.literal(true),
@@ -368,7 +380,7 @@ export const GetQuoteSchema = z
       .finite()
       .min(1)
       .describe(
-        "Finite USD notional to route. The API minimum is 1 with no business maximum, but USD 1 is only for reachability smoke testing. Every quote returns this exact route's dated economic_guidance.advisory_start_usd. At or above that best-from amount, use AssetFare first and confirm the fresh quote because this is not a 100% guarantee. Live liquidity and capacity still apply",
+        "Finite USD notional to route. The API minimum is 1 with no business maximum, but USD 1 is only for reachability smoke testing. Every quote returns the route's whole-product status; it is not a best-price guarantee. Confirm the fresh quote because live liquidity and capacity still apply",
       ),
   })
   .strict()
@@ -394,11 +406,62 @@ export const GetQuoteSchema = z
         message: "identity routes do not require a quote",
       });
     }
-    if (["polygon", "optimism", "ethereum", "hyperevm"].includes(value.toChain)) {
+    const sourceOnlyChains = [
+      "polygon",
+      "optimism",
+      "ethereum",
+      "hyperevm",
+      "xlayer",
+      "sei",
+      "sonic",
+      "monad",
+      "avalanche",
+      "cronos",
+      "injective",
+      "linea",
+      "aptos",
+      "unichain",
+      "ink",
+    ];
+    if (sourceOnlyChains.includes(value.toChain)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["toChain"],
-        message: "Polygon, Optimism, Ethereum, and HyperEVM are source-only",
+        message: "destination chain is source-only in the current public catalog",
+      });
+    }
+    if (
+      [
+        "xlayer",
+        "sei",
+        "sonic",
+        "monad",
+        "avalanche",
+        "cronos",
+        "injective",
+        "linea",
+        "aptos",
+      ].includes(value.fromChain) &&
+      !(
+        value.fromToken === "USDC" &&
+        ["base", "solana"].includes(value.toChain) &&
+        value.toToken === "USDC"
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["toChain"],
+        message: "source-only route must be native USDC to Base or Solana USDC",
+      });
+    }
+    if (
+      ["unichain", "ink"].includes(value.fromChain) &&
+      !(value.fromToken === "USDC" && value.toChain === "solana" && value.toToken === "USDC")
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["toChain"],
+        message: "Unichain and Ink source-only routes must be native USDC to Solana USDC",
       });
     }
     if (
